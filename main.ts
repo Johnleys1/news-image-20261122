@@ -2,16 +2,15 @@ import { copyFileSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
-// Resolve paths from this script's own directory, not the process working
-// directory: the grader runs `node /bot/main.ts` from elsewhere, so a
-// relative "entry.png" would throw ENOENT there.
+// The grader runs this file as `node /bot/main.ts` from a working
+// directory that is not the repository, so a bare "entry.png" would
+// throw ENOENT there. Anchor every path to this script's own folder.
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const sourcePath = join(scriptDir, "entry.png");
 const outputDir = process.env.MAKEFUN_OUTPUT_DIR || "/output";
 
-// A valid PNG always starts with this 8-byte signature. Verify it before
-// copying so a corrupt or non-PNG entry.png fails loudly here instead of
-// silently shipping a broken image to the grader.
+// A real PNG opens with this 8-byte signature. Refuse anything else
+// here so a corrupt file fails loudly instead of shipping broken.
 const PNG_SIGNATURE = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
 ]);
@@ -23,12 +22,13 @@ if (
 ) {
   throw new Error("entry.png is not a valid PNG (bad signature)");
 }
-
-// Sanity-check the payload size: an empty file is a broken entry, and the
-// grader caps a single image at 1 MiB, so anything larger fails there anyway.
 if (source.length === 0 || source.length > 1024 * 1024) {
-  throw new Error(
-    `entry.png has an implausible size (${source.length} bytes)`
-  );
+  throw new Error(`entry.png has an implausible size (${source.length} bytes)`);
 }
 copyFileSync(sourcePath, join(outputDir, "entry.png"));
+
+// Confirm the copy landed intact before the run ends.
+const copied = readFileSync(join(outputDir, "entry.png"));
+if (copied.length !== source.length) {
+  throw new Error("entry.png copy is incomplete");
+}
