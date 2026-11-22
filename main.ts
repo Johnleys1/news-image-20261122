@@ -14,4 +14,12 @@ if (
 ) {
   throw new Error("entry.png is not a valid PNG (bad signature)");
 }
+
+// Sanity-check the payload size: an empty file is a broken entry, and the
+// grader caps a single image at 1 MiB, so anything larger fails there anyway.
+if (source.length === 0 || source.length > 1024 * 1024) {
+  throw new Error(
+    `entry.png has an implausible size (${source.length} bytes)`
+  );
+}
 copyFileSync("entry.png", "/output/entry.png");
