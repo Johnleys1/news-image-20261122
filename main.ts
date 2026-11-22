@@ -1,4 +1,13 @@
 import { copyFileSync, readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
+
+// Resolve paths from this script's own directory, not the process working
+// directory: the grader runs `node /bot/main.ts` from elsewhere, so a
+// relative "entry.png" would throw ENOENT there.
+const scriptDir = dirname(fileURLToPath(import.meta.url));
+const sourcePath = join(scriptDir, "entry.png");
+const outputDir = process.env.MAKEFUN_OUTPUT_DIR || "/output";
 
 // A valid PNG always starts with this 8-byte signature. Verify it before
 // copying so a corrupt or non-PNG entry.png fails loudly here instead of
@@ -7,7 +16,7 @@ const PNG_SIGNATURE = Buffer.from([
   0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a,
 ]);
 
-const source = readFileSync("entry.png");
+const source = readFileSync(sourcePath);
 if (
   source.length < PNG_SIGNATURE.length ||
   !source.subarray(0, PNG_SIGNATURE.length).equals(PNG_SIGNATURE)
@@ -22,4 +31,4 @@ if (source.length === 0 || source.length > 1024 * 1024) {
     `entry.png has an implausible size (${source.length} bytes)`
   );
 }
-copyFileSync("entry.png", "/output/entry.png");
+copyFileSync(sourcePath, join(outputDir, "entry.png"));
